@@ -106,6 +106,15 @@ namespace Microsoft.NET.Build.Containers.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to CONTAINER2020: {0} does not specify a registry and will be pulled from Docker Hub. Please prefix the name with the image registry, for example: '{1}/<image>'..
+        /// </summary>
+        internal static string BaseImageNameRegistryFallback {
+            get {
+                return ResourceManager.GetString("BaseImageNameRegistryFallback", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to CONTAINER1011: Couldn&apos;t find matching base image for {0} that matches RuntimeIdentifier {1}..
         /// </summary>
         internal static string BaseImageNotFound {
@@ -232,7 +241,7 @@ namespace Microsoft.NET.Build.Containers.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to CONTAINER1009: Failed to load image to local Docker daemon. stdout: {0}.
+        ///   Looks up a localized string similar to CONTAINER1009: Failed to load image to local registry. stdout: {0}.
         /// </summary>
         internal static string ImageLoadFailed {
             get {
@@ -241,7 +250,7 @@ namespace Microsoft.NET.Build.Containers.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to CONTAINER1010: Pulling images from local Docker daemon is not supported..
+        ///   Looks up a localized string similar to CONTAINER1010: Pulling images from local registry is not supported..
         /// </summary>
         internal static string ImagePullNotSupported {
             get {
@@ -358,11 +367,11 @@ namespace Microsoft.NET.Build.Containers.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to CONTAINER1012: The local Docker daemon is not available, but pushing to a local Docker daemon was requested. Please start the daemon and try again..
+        ///   Looks up a localized string similar to CONTAINER1012: The local registry is not available, but pushing to a local registry was requested.
         /// </summary>
-        internal static string LocalDaemonNotAvailable {
+        internal static string LocalRegistryNotAvailable {
             get {
-                return ResourceManager.GetString("LocalDaemonNotAvailable", resourceCulture);
+                return ResourceManager.GetString("LocalRegistryNotAvailable", resourceCulture);
             }
         }
         
@@ -565,11 +574,11 @@ namespace Microsoft.NET.Build.Containers.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to CONTAINER2002: Unknown local container daemon type &apos;{0}&apos;. Valid local container daemon types are {1}..
+        ///   Looks up a localized string similar to CONTAINER2002: Unknown local registry type &apos;{0}&apos;. Valid local container registry types are {1}..
         /// </summary>
-        internal static string UnknownDaemonType {
+        internal static string UnknownLocalRegistryType {
             get {
-                return ResourceManager.GetString("UnknownDaemonType", resourceCulture);
+                return ResourceManager.GetString("UnknownLocalRegistryType", resourceCulture);
             }
         }
         
@@ -588,6 +597,60 @@ namespace Microsoft.NET.Build.Containers.Resources {
         internal static string UnrecognizedMediaType {
             get {
                 return ResourceManager.GetString("UnrecognizedMediaType", resourceCulture);
+            }
+        }
+
+        internal static string UnknownAppCommandInstruction {
+            get {
+                return ResourceManager.GetString("UnknownAppCommandInstruction", resourceCulture);
+            }
+        }
+
+        internal static string BaseEntrypointOverwritten {
+            get {
+                return ResourceManager.GetString("BaseEntrypointOverwritten", resourceCulture);
+            }
+        }
+
+        internal static string EntrypointAndAppCommandArgsSetNoAppCommandInstruction {
+            get {
+                return ResourceManager.GetString("EntrypointAndAppCommandArgsSetNoAppCommandInstruction", resourceCulture);
+            }
+        }
+
+        internal static string EntrypointArgsSetNoEntrypoint {
+            get {
+                return ResourceManager.GetString("EntrypointArgsSetNoEntrypoint", resourceCulture);
+            }
+        }
+
+        internal static string AppCommandArgsSetNoAppCommand {
+            get {
+                return ResourceManager.GetString("AppCommandArgsSetNoAppCommand", resourceCulture);
+            }
+        }
+
+        internal static string AppCommandSetNotUsed {
+            get {
+                return ResourceManager.GetString("AppCommandSetNotUsed", resourceCulture);
+            }
+        }
+
+        internal static string EntrypointSetNoAppCommandInstruction {
+            get {
+                return ResourceManager.GetString("EntrypointSetNoAppCommandInstruction", resourceCulture);
+            }
+        }
+
+        internal static string EntrypointConflictAppCommand {
+            get {
+                return ResourceManager.GetString("EntrypointConflictAppCommand", resourceCulture);
+            }
+        }
+
+        internal static string EntrypointArgsSetPreferAppCommandArgs {
+            get {
+                return ResourceManager.GetString("EntrypointArgsSetPreferAppCommandArgs", resourceCulture);
             }
         }
     }

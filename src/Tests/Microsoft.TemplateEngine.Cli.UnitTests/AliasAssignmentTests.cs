@@ -1,10 +1,8 @@
-// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
-//
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System.CommandLine;
 using FakeItEasy;
-using FluentAssertions;
 using Microsoft.TemplateEngine.Abstractions;
 using Microsoft.TemplateEngine.Cli.Commands;
 using Microsoft.TemplateEngine.Edge;
@@ -313,7 +311,7 @@ namespace Microsoft.TemplateEngine.Cli.UnitTests
                 Assert.True(templateOption.Aliases.Count > 0);
                 var longAlias = templateOption.Aliases.ElementAt(0);
                 var shortAlias = templateOption.Aliases.Count > 1 ? templateOption.Aliases.ElementAt(1) : null;
-                var isHidden = templateOption.Option.IsHidden;
+                var isHidden = templateOption.Option.Hidden;
                 Assert.Equal(expectedLongAlias, longAlias);
                 Assert.Equal(expectedShortAlias, shortAlias);
                 Assert.Equal(expectedIsHidden, isHidden);

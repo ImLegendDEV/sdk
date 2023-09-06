@@ -1,22 +1,14 @@
-// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-using System.Collections.Generic;
 using System.CommandLine;
-using System.CommandLine.Parsing;
 using Microsoft.Deployment.DotNet.Releases;
 using Microsoft.DotNet.Cli;
 using Microsoft.DotNet.Cli.Utils;
-using Microsoft.DotNet.Configurer;
 using Microsoft.NET.Sdk.WorkloadManifestReader;
-using System.IO;
-using System.Linq;
-using Microsoft.DotNet.Workloads.Workload.Install.InstallRecord;
 using Microsoft.DotNet.Cli.NuGetPackageDownloader;
 using Microsoft.Extensions.EnvironmentAbstractions;
 using Microsoft.DotNet.Workloads.Workload.Install;
-using NuGet.Common;
 
 namespace Microsoft.DotNet.Workloads.Workload.Repair
 {
@@ -40,8 +32,8 @@ namespace Microsoft.DotNet.Workloads.Workload.Repair
             string userProfileDir = null)
             : base(parseResult, reporter: reporter, nugetPackageDownloader: nugetPackageDownloader)
         {
-            var configOption = parseResult.GetValueForOption(WorkloadRepairCommandParser.ConfigOption);
-            var sourceOption = parseResult.GetValueForOption(WorkloadRepairCommandParser.SourceOption);
+            var configOption = parseResult.GetValue(WorkloadRepairCommandParser.ConfigOption);
+            var sourceOption = parseResult.GetValue(WorkloadRepairCommandParser.SourceOption);
             _packageSourceLocation = string.IsNullOrEmpty(configOption) && (sourceOption == null || !sourceOption.Any()) ? null :
                 new PackageSourceLocation(string.IsNullOrEmpty(configOption) ? null : new FilePath(configOption), sourceFeedOverrides: sourceOption);
 
@@ -50,7 +42,7 @@ namespace Microsoft.DotNet.Workloads.Workload.Repair
                 DotnetPath = dotnetDir,
                 UserProfileDir = userProfileDir,
                 GlobalJsonStartDir = null,
-                SdkVersionFromOption = parseResult.GetValueForOption(WorkloadRepairCommandParser.VersionOption),
+                SdkVersionFromOption = parseResult.GetValue(WorkloadRepairCommandParser.VersionOption),
                 VersionForTesting = version,
                 CheckIfFeatureBandManifestExists = true,
                 WorkloadResolverForTesting = workloadResolver,

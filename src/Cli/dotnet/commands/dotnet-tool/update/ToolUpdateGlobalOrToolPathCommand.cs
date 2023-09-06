@@ -1,18 +1,12 @@
-// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-using System.Collections.Generic;
 using System.CommandLine;
-using System.CommandLine.Parsing;
-using System.IO;
-using System.Linq;
 using System.Transactions;
 using Microsoft.DotNet.Cli;
 using Microsoft.DotNet.Cli.Utils;
 using Microsoft.DotNet.ShellShim;
 using Microsoft.DotNet.ToolPackage;
-using Microsoft.DotNet.Tools.Tool.Common;
 using Microsoft.DotNet.Tools.Tool.Install;
 using Microsoft.DotNet.Tools.Tool.Uninstall;
 using Microsoft.Extensions.EnvironmentAbstractions;
@@ -49,14 +43,14 @@ namespace Microsoft.DotNet.Tools.Tool.Update
             IReporter reporter = null)
             : base(parseResult)
         {
-            _packageId = new PackageId(parseResult.GetValueForArgument(ToolUninstallCommandParser.PackageIdArgument));
-            _configFilePath = parseResult.GetValueForOption(ToolUpdateCommandParser.ConfigOption);
-            _framework = parseResult.GetValueForOption(ToolUpdateCommandParser.FrameworkOption);
-            _additionalFeeds = parseResult.GetValueForOption(ToolUpdateCommandParser.AddSourceOption);
-            _packageVersion = parseResult.GetValueForOption(ToolUpdateCommandParser.VersionOption);
-            _global = parseResult.GetValueForOption(ToolUpdateCommandParser.GlobalOption);
-            _verbosity = Enum.GetName(parseResult.GetValueForOption(ToolUpdateCommandParser.VerbosityOption));
-            _toolPath = parseResult.GetValueForOption(ToolUpdateCommandParser.ToolPathOption);
+            _packageId = new PackageId(parseResult.GetValue(ToolUninstallCommandParser.PackageIdArgument));
+            _configFilePath = parseResult.GetValue(ToolUpdateCommandParser.ConfigOption);
+            _framework = parseResult.GetValue(ToolUpdateCommandParser.FrameworkOption);
+            _additionalFeeds = parseResult.GetValue(ToolUpdateCommandParser.AddSourceOption);
+            _packageVersion = parseResult.GetValue(ToolUpdateCommandParser.VersionOption);
+            _global = parseResult.GetValue(ToolUpdateCommandParser.GlobalOption);
+            _verbosity = Enum.GetName(parseResult.GetValue(ToolUpdateCommandParser.VerbosityOption));
+            _toolPath = parseResult.GetValue(ToolUpdateCommandParser.ToolPathOption);
             _forwardRestoreArguments = parseResult.OptionValuesToBeForwarded(ToolUpdateCommandParser.GetCommand());
 
             _createToolPackageStoreInstallerUninstaller = createToolPackageStoreInstallerUninstaller ??

@@ -17,11 +17,32 @@ Copyright (c) .NET Foundation. All rights reserved.
     <IsPublishable Condition="'$(IsPublishable)' == ''">true</IsPublishable>
   </PropertyGroup>
 
+  <!-- Trimming/AOT/publish* property configuration -->
+  <PropertyGroup>
+    <!-- PublishAot depends on PublishTrimmed. This must be set early enough for the KnownILLinkPack to be restored. -->
+    <PublishTrimmed Condition="'$(PublishTrimmed)' == '' And '$(PublishAot)' == 'true'">true</PublishTrimmed>
+    <IsTrimmable Condition="'$(IsTrimmable)' == '' and '$(IsAotCompatible)' == 'true'">true</IsTrimmable>
+  </PropertyGroup>
+
   <ItemDefinitionGroup>
     <ResolvedFileToPublish>
       <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </ResolvedFileToPublish>
   </ItemDefinitionGroup>
+
+  <Target Name="_ComputeRequiresILLinkPack" BeforeTargets="ProcessFrameworkReferences">
+    <!-- Keep this in sync with the warnings produced for RequiresILLinkPack in ProcessFrameworkReferences.cs. 
+         Must be set late enough to see the inferred value of EnableSingleFileAnalyzer. -->
+    <PropertyGroup>
+      <_RequiresILLinkPack Condition="'$(_RequiresILLinkPack)' == '' And (
+          '$(PublishAot)' == 'true' Or
+          '$(IsAotCompatible)' == 'true' Or '$(EnableAotAnalyzer)' == 'true' Or
+          '$(PublishTrimmed)' == 'true' Or
+          '$(IsTrimmable)' == 'true' Or '$(EnableTrimAnalyzer)' == 'true' Or
+          '$(EnableSingleFileAnalyzer)' == 'true')">true</_RequiresILLinkPack>
+      <_RequiresILLinkPack Condition="'$(_RequiresILLinkPack)' == ''">false</_RequiresILLinkPack>
+    </PropertyGroup>
+  </Target>
 
   <!--
     ============================================================
@@ -118,18 +139,20 @@ Copyright (c) .NET Foundation. All rights reserved.
                             '$(EnableCompressionInSingleFile)' == 'true' And
                             '$(SelfContained)' != 'true'"
                  ResourceName="CompressionInSingleFileRequiresSelfContained" />
-    <NETSdkError Condition="'$(PublishAot)' == 'true' and '$(PublishAotSupported)' != 'true'"
-                ResourceName="AotNotSupported" />
 
     <NETSdkWarning Condition="'$(PublishProfileImported)' != 'true' and '$(PublishProfile)' != ''"
-                ResourceName="PublishProfileNotPresent" 
-                FormatArguments="$(PublishProfile)"/>    
-                               
-    <!-- Enable warning for trying to use PublishRelease or PackRelease with a solution if env-var is not set.-->
-    <NETSdkWarning Condition="'$(PublishRelease)' != '' and '$(SolutionExt)' == '.sln' and '$(DOTNET_CLI_ENABLE_PUBLISH_RELEASE_FOR_SOLUTIONS)' == ''"
-                   ResourceName="PReleaseRequiresEnvVarOnSln"
-                   FormatArguments="PublishRelease;DOTNET_CLI_ENABLE_PUBLISH_RELEASE_FOR_SOLUTIONS"
-    />
+                   ResourceName="PublishProfileNotPresent"
+                   FormatArguments="$(PublishProfile)"/>
+
+    <!-- Projects in a solution cannot have conflicting configurations. This checks if PublishRelease conflicted at runtime to avoid extra project evaluations.
+    SolutionExt is used to check if we are publishing a solution. Will be undefined if not.-->
+    <NETSdkError Condition="'$(_IsPublishing)' == 'true' and
+                            '$(DOTNET_CLI_DISABLE_PUBLISH_AND_PACK_RELEASE)' != 'true' and
+                            '$(DOTNET_CLI_LAZY_PUBLISH_AND_PACK_RELEASE_FOR_SOLUTIONS)' == 'true' and
+                            '$(SolutionExt)' == '.sln' and
+                            '$(_SolutionLevelPublishRelease)' != '$(PublishRelease)'"
+                 ResourceName="SolutionProjectConfigurationsConflict"
+                 FormatArguments="PublishRelease;$(ProjectName)"/>
 
     <PropertyGroup>
       <!-- Ensure any PublishDir has a trailing slash, so it can be concatenated -->
@@ -312,7 +335,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     <ResolveReadyToRunCompilers RuntimePacks="@(ResolvedRuntimePack)"
                                 Crossgen2Packs="@(ResolvedCrossgen2Pack)"
                                 TargetingPacks="@(ResolvedTargetingPack)"
-                                RuntimeGraphPath="$(BundledRuntimeIdentifierGraphFile)"
+                                RuntimeGraphPath="$(RuntimeIdentifierGraphPath)"
                                 NETCoreSdkRuntimeIdentifier="$(NETCoreSdkRuntimeIdentifier)"
                                 EmitSymbols="$(PublishReadyToRunEmitSymbols)"
                                 ReadyToRunUseCrossgen2="$(PublishReadyToRunUseCrossgen2)"
@@ -370,6 +393,17 @@ Copyright (c) .NET Foundation. All rights reserved.
                             GeneratePublishDependencyFile;
                             GenerateSingleFileBundle">
   </Target>
+
+  <!--
+    ============================================================
+                                        ILLink
+
+    Initially an empty placeholder target. When trimming, this
+    will be redefined to invoke ILLink to perform IL trimming.
+    The placeholder exists to allow other targets to depend on it for ordering purposes.
+    ============================================================
+    -->
+  <Target Name="ILLink" />
 
   <PropertyGroup>
     <CopyBuildOutputToPublishDirectory Condition="'$(CopyBuildOutputToPublishDirectory)'==''">true</CopyBuildOutputToPublishDirectory>
@@ -896,11 +930,37 @@ Copyright (c) .NET Foundation. All rights reserved.
     </PropertyGroup>
   </Target>
 
+  <Target Name="_GenerateSingleFileBundleInputCache">
+    <ItemGroup>
+      <_GenerateSingleFileBundlePropertyInputsCacheToHash Include="$(PublishedSingleFilePath)" />
+      <_GenerateSingleFileBundlePropertyInputsCacheToHash Include="$(TraceSingleFileBundler)" />
+      <_GenerateSingleFileBundlePropertyInputsCacheToHash Include="$(IncludeSymbolsInSingleFile)" />
+      <_GenerateSingleFileBundlePropertyInputsCacheToHash Include="$(IncludeAllContentForSelfExtract)" />
+      <_GenerateSingleFileBundlePropertyInputsCacheToHash Include="$(IncludeNativeLibrariesForSelfExtract)" />
+      <_GenerateSingleFileBundlePropertyInputsCacheToHash Include="$(EnableCompressionInSingleFile)" />
+      <_GenerateSingleFileBundlePropertyInputsCacheToHash Include="$(PublishedSingleFileName)" />
+      <_GenerateSingleFileBundlePropertyInputsCacheToHash Include="$(RuntimeIdentifier)" />
+      <_GenerateSingleFileBundlePropertyInputsCacheToHash Include="$(PublishDir)" />
+      <_GenerateSingleFileBundlePropertyInputsCacheToHash Include="$(_TargetFrameworkVersionWithoutV)" />
+      <_GenerateSingleFileBundlePropertyInputsCacheToHash Include="@(FilesToBundle)" />
+    </ItemGroup>
+
+    <Hash ItemsToHash="@(_GenerateSingleFileBundlePropertyInputsCacheToHash)">
+      <Output TaskParameter="HashResult" PropertyName="_GenerateSingleFileBundlePropertyInputsCacheHash" />
+    </Hash>
+
+    <WriteLinesToFile
+      Lines="$(_GenerateSingleFileBundlePropertyInputsCacheHash)"
+      File="$(_GenerateSingleFileBundlePropertyInputsCache)"
+      Overwrite="true"
+      WriteOnlyWhenDifferent="true" />
+  </Target>
+
   <UsingTask TaskName="GenerateBundle" AssemblyFile="$(MicrosoftNETBuildTasksAssembly)" />
   <Target Name="GenerateSingleFileBundle"
           Condition="'$(PublishSingleFile)' == 'true'"
-          DependsOnTargets="_ComputeFilesToBundle;PrepareForBundle"
-          Inputs="@(FilesToBundle)"
+          DependsOnTargets="_ComputeFilesToBundle;PrepareForBundle;_GenerateSingleFileBundleInputCache"
+          Inputs="@(FilesToBundle);$(_GenerateSingleFileBundlePropertyInputsCache)"
           Outputs="$(PublishedSingleFilePath)">
 
     <PropertyGroup>
@@ -934,6 +994,50 @@ Copyright (c) .NET Foundation. All rights reserved.
 
   </Target>
 
+  <Target Name="_ComputeIntermediateDepsFilePath">
+    <PropertyGroup>
+      <!-- IntermediateDepsFilePath is the location where the deps.json file is originally created -->
+      <IntermediateDepsFilePath Condition=" '$(PublishDepsFilePath)' != ''">$(PublishDepsFilePath)</IntermediateDepsFilePath >
+      <IntermediateDepsFilePath Condition=" '$(PublishDepsFilePath)' == ''">$(IntermediateOutputPath)$(ProjectDepsFileName)</IntermediateDepsFilePath >
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="_GeneratePublishDependencyFileInputCache"
+          DependsOnTargets="_ComputeIntermediateDepsFilePath">
+    <ItemGroup>
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(PublishDepsFilePath)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(PublishSingleFile)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(MSBuildProjectFullPath)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(ProjectAssetsFile)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(IntermediateDepsFilePath)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(TargetFramework)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(AssemblyName)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(TargetExt)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(Version)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(IncludeMainProjectInDepsFile)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(RuntimeIdentifier)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(MicrosoftNETPlatformLibrary)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(SelfContained)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(IncludeFileVersionsInDependencyFile)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(RuntimeIdentifierGraphPath)" />
+      <_GeneratePublishDependencyFilePropertyInputsCacheToHash Include="$(IncludeProjectsNotInAssetsFileInDepsFile)" />
+    </ItemGroup>
+
+    <Hash ItemsToHash="@(_GeneratePublishDependencyFilePropertyInputsCacheToHash)">
+      <Output TaskParameter="HashResult" PropertyName="_GeneratePublishDependencyFilePropertyInputsCacheHash" />
+    </Hash>
+
+    <WriteLinesToFile
+      Lines="$(_GeneratePublishDependencyFilePropertyInputsCacheHash)"
+      File="$(_GeneratePublishDependencyFilePropertyInputsCache)"
+      Overwrite="True"
+      WriteOnlyWhenDifferent="True" />
+
+    <ItemGroup>
+      <FileWrites Include="$(_GeneratePublishDependencyFilePropertyInputsCache)" />
+    </ItemGroup>
+  </Target>
+
   <!--
     ============================================================
     _GeneratePublishDependencyFile
@@ -942,25 +1046,27 @@ Copyright (c) .NET Foundation. All rights reserved.
     -->
   <Target Name="GeneratePublishDependencyFile"
           DependsOnTargets="_ComputeUseBuildDependencyFile;
+                            _ComputeIntermediateDepsFilePath;
                             _DefaultMicrosoftNETPlatformLibrary;
                             _HandlePackageFileConflicts;
                             _HandlePackageFileConflictsForPublish;
                             _ComputeReferenceAssemblies;
                             _ComputeUserRuntimeAssemblies;
                             ResolveRuntimePackAssets;
-                            _ComputePackageReferencePublish"
-          Condition="'$(GenerateDependencyFile)' == 'true' and '$(_UseBuildDependencyFile)' != 'true' and '$(PublishAot)' != 'true'">
+                            _ComputePackageReferencePublish;
+                            _GeneratePublishDependencyFileInputCache"
+          Condition="'$(GenerateDependencyFile)' == 'true' and '$(_UseBuildDependencyFile)' != 'true' and '$(PublishAot)' != 'true'"
+          Inputs="$(ProjectAssetsFile);$(ProjectAssetsCacheFile);$(MSBuildAllProjects);$(_GeneratePublishDependencyFilePropertyInputsCache)"
+          Outputs="$(IntermediateDepsFilePath)">
 
     <PropertyGroup>
-      <!-- IntermediateDepsFilePath is the location where the deps.json file is originally created
-           PublishDepsFilePath is the location where the deps.json resides when published
-           PublishDepsFilePath is empty (by default) for PublishSingleFile, since the deps.json file is embedde within the single-file bundle -->
-      <IntermediateDepsFilePath Condition=" '$(PublishDepsFilePath)' != ''">$(PublishDepsFilePath)</IntermediateDepsFilePath >
-      <IntermediateDepsFilePath Condition=" '$(PublishDepsFilePath)' == ''">$(IntermediateOutputPath)$(ProjectDepsFileName)</IntermediateDepsFilePath >
+      <!-- PublishDepsFilePath is the location where the deps.json resides when published
+           PublishDepsFilePath is empty (by default) for PublishSingleFile, since the deps.json file is embedded within the single-file bundle -->
       <PublishDepsFilePath Condition=" '$(PublishDepsFilePath)' == '' And '$(PublishSingleFile)' != 'true'">$(PublishDir)$(ProjectDepsFileName)</PublishDepsFilePath>
       <_IsSingleFilePublish Condition="'$(PublishSingleFile)' == ''">false</_IsSingleFilePublish>
       <_IsSingleFilePublish Condition="'$(PublishSingleFile)' != ''">$(PublishSingleFile)</_IsSingleFilePublish>
     </PropertyGroup>
+
     <ItemGroup>
       <ResolvedCompileFileDefinitions Remove="@(_PublishConflictPackageFiles)" Condition="'%(_PublishConflictPackageFiles.ConflictItemType)' == 'Reference'" />
       <RuntimeTargetsCopyLocalItems Remove="@(_PublishConflictPackageFiles)" Condition="'%(_PublishConflictPackageFiles.ConflictItemType)' != 'Reference'" />
@@ -999,7 +1105,7 @@ Copyright (c) .NET Foundation. All rights reserved.
                       IsSelfContained="$(SelfContained)"
                       IsSingleFile="$(_IsSingleFilePublish)"
                       IncludeRuntimeFileVersions="$(IncludeFileVersionsInDependencyFile)"
-                      RuntimeGraphPath="$(BundledRuntimeIdentifierGraphFile)"
+                      RuntimeGraphPath="$(RuntimeIdentifierGraphPath)"
                       IncludeProjectsNotInAssetsFile="$(IncludeProjectsNotInAssetsFileInDepsFile)"/>
 
     <ItemGroup>
@@ -1109,6 +1215,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     ============================================================
     -->
   <Target Name="_CheckForLanguageAndPublishFeatureCombinationSupport"
+        Condition="$(IsPublishable) == 'true'"
         BeforeTargets="Publish;PrepareForPublish">
 
     <NETSdkError Condition="('$(Language)' == 'C++' and '$(_EnablePackageReferencesInVCProjects)' != 'true') and '$(TargetFrameworkIdentifier)' == '.NETCoreApp'"
